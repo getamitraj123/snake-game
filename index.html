@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Snake</title>
+    <link rel="stylesheet" href="/snake.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="hud">
+        <h1>Snake</h1>
+        <div class="hud-right">
+          <div id="score" class="score">Score: 0</div>
+          <div id="status" class="status">Running</div>
+        </div>
+      </header>
+
+      <section aria-label="Snake board">
+        <div id="board" class="board" role="grid" aria-label="Snake grid"></div>
+      </section>
+
+      <section class="controls-row">
+        <button id="pauseBtn" type="button">Pause</button>
+        <button id="restartBtn" type="button">Restart</button>
+      </section>
+
+      <section class="mobile-controls" aria-label="Direction controls">
+        <button type="button" data-dir="up" aria-label="Move up">↑</button>
+        <div class="middle-row">
+          <button type="button" data-dir="left" aria-label="Move left">←</button>
+          <button type="button" data-dir="down" aria-label="Move down">↓</button>
+          <button type="button" data-dir="right" aria-label="Move right">→</button>
+        </div>
+      </section>
+
+      <p class="help">
+        Controls: Arrow keys or WASD. Space toggles pause.
+      </p>
+    </main>
+
+    <script type="module" src="/snakeApp.js"></script>
+  </body>
+</html>
