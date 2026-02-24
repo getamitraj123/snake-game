@@ -1,36 +1,73 @@
-# Snake (Classic)
+# Fire Compliance Portal (MVP)
 
-Minimal, dependency-free Snake game.
+Web-first fire compliance portal with mobile field workflow and central sync support.
 
-## Run
+## What is included
 
-1. From `/Users/amitraj/Documents/Codex`, start a static server:
-   - `ruby -run -e httpd . -p 8000`
-2. Open `http://localhost:8000`.
+- Phone + OTP login flow (demo OTP in UI)
+- Role-based access: `Admin`, `Maintenance`, `Compliance`, `Auditor`, `Accounts`, `Manager`
+- Store/city scoped visibility
+- Dashboard for pending, overdue, expiring, and critical items
+- Dashboard drilldown:
+  - Work done in last 7 days by category/subcategory
+  - Auditor and maintenance efficiency (last 30 days)
+- Compliance tasks with recurring + one-time logic
+- Review workflow:
+  - Field uploads go to admin review queue first
+  - Task closes only after admin approval
+  - Rejection requires minimum 100-word comment and task returns to pending
+- Mobile-first **Field Work** page:
+  - Select outlet
+  - See pending agenda items
+  - Capture live back-camera video (with audio) in-app
+  - Attach geolocation + capture timestamp metadata
+  - Upload photo/video/document
+  - Upload optional audio note
+  - Add text description and submit from store
+- Document vault with expiry tracking
+- Asset register for fire/electrical/gas safety
+- Admin template manager for add/remove/frequency configuration
 
-## Where to navigate
+## Demo users
 
-- Main game page: `/` (the root `index.html`).
+- `9999999990` Admin
+- `9999999991` Maintenance
+- `9999999992` Accounts
+- `9999999993` Manager
+- `9999999994` Compliance
+- `9999999995` Auditor
 
-## Manual verification checklist
+## Run with central sync (recommended)
 
-- Controls:
-  - Arrow keys and `W/A/S/D` move the snake.
-  - Opposite-direction instant reversal is blocked.
-  - On touch/mobile pointers, tap on-screen arrows to move.
-- Pause/Restart:
-  - Press `Space` or click `Pause`/`Resume` to toggle pause.
-  - Click `Restart` to reset score and snake.
-  - After game over, restart still works.
-- Boundaries and game-over:
-  - Hitting any wall ends the game.
-  - Running into the snake body ends the game.
-- Food/Growth/Score:
-  - Eating food grows snake length by 1.
-  - Score increments by 1 per food eaten.
-  - New food never appears on the snake body.
+From `/Users/amitraj/Documents/Codex`:
 
-## Notes
+```bash
+python3 backend.py
+```
 
-- No test runner/framework was present in the repo, so no automated test files were added.
-- Core logic is kept pure and deterministic in `snakeLogic.js` for easy unit testing if a runner is added later.
+Then open:
+
+- `http://localhost:8000`
+
+This mode enables:
+
+- Shared state across devices/users connected to same server
+- Central file uploads under `/uploads`
+- Video retention policy: video evidence and video documents older than 365 days are auto-purged
+
+## Run static-only fallback
+
+```bash
+python3 -m http.server 8000
+```
+
+This mode is local browser storage only (no shared central sync across devices).
+
+## Deploy publicly
+
+1. Push repository to GitHub.
+2. Deploy to a VM/container where `python3 backend.py` can run (Render/Railway/AWS/DO/etc.).
+3. Point your domain/subdomain to that service.
+4. Add HTTPS.
+
+Note: GitHub Pages alone serves static files only and will not support central uploads/database.
