@@ -99,6 +99,18 @@ async function bootstrap() {
 
 function normalizeState(input) {
   const data = structuredClone(input || seedState);
+  if (!Array.isArray(data.users) || data.users.length === 0) {
+    data.users = structuredClone(seedState.users);
+  }
+  if (!Array.isArray(data.cities) || data.cities.length === 0) {
+    data.cities = structuredClone(seedState.cities);
+  }
+  if (!Array.isArray(data.stores) || data.stores.length === 0) {
+    data.stores = structuredClone(seedState.stores);
+  }
+  if (!Array.isArray(data.templates) || data.templates.length === 0) {
+    data.templates = structuredClone(seedState.templates);
+  }
   data.templates = (data.templates || []).map((t) => ({
     category: t.category || inferCategory(t.name),
     subcategory: t.subcategory || "General",
@@ -213,6 +225,12 @@ function hasAll(scope) {
 
 function getCurrentUser() {
   return state.users.find((u) => u.id === session.userId) || null;
+}
+
+function normalizePhone(raw) {
+  const digits = String(raw || "").replace(/\D/g, "");
+  if (digits.length <= 10) return digits;
+  return digits.slice(-10);
 }
 
 function storesForUser(user) {
@@ -424,10 +442,10 @@ function renderLogin() {
 
   document.getElementById("phoneForm").addEventListener("submit", (e) => {
     e.preventDefault();
-    const phone = String(new FormData(e.currentTarget).get("phone") || "").trim();
-    const user = state.users.find((u) => u.phone === phone);
+    const phone = normalizePhone(new FormData(e.currentTarget).get("phone"));
+    const user = state.users.find((u) => normalizePhone(u.phone) === phone);
     if (!user) return alert("Phone not found.");
-    session.otpPhone = phone;
+    session.otpPhone = normalizePhone(user.phone);
     session.otpCode = String(Math.floor(100000 + Math.random() * 900000));
     saveSession();
     render();
@@ -437,7 +455,7 @@ function renderLogin() {
     e.preventDefault();
     const otp = String(new FormData(e.currentTarget).get("otp") || "").trim();
     if (otp !== session.otpCode) return alert("Invalid OTP");
-    const user = state.users.find((u) => u.phone === session.otpPhone);
+    const user = state.users.find((u) => normalizePhone(u.phone) === normalizePhone(session.otpPhone));
     if (!user) return alert("User not found");
     session.userId = user.id;
     session.otpCode = null;
