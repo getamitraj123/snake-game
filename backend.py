@@ -173,7 +173,8 @@ class PortalHandler(SimpleHTTPRequestHandler):
 
 if __name__ == "__main__":
     os.chdir(BASE_DIR)
-    host, port = "0.0.0.0", 8000
+    host = "0.0.0.0"
+    port = int(os.environ.get("PORT", "8000"))
     server = ThreadingHTTPServer((host, port), PortalHandler)
     print(f"Fire Compliance Portal running at http://{host}:{port}")
     print("Open from same machine: http://localhost:8000")
