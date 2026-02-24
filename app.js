@@ -72,7 +72,7 @@ const roleLabels = {
 };
 
 const roleNav = {
-  admin: ["dashboard", "reviews", "field", "tasks", "documents", "assets", "templates"],
+  admin: ["dashboard", "users", "reviews", "field", "tasks", "documents", "assets", "templates"],
   maintenance: ["dashboard", "field", "tasks", "assets"],
   compliance: ["dashboard", "field", "tasks", "documents", "assets"],
   auditor: ["dashboard", "field", "tasks"],
@@ -125,6 +125,10 @@ function normalizeState(input) {
     fieldMeta: t.fieldMeta || null,
     pendingReviewId: t.pendingReviewId || null,
     lastRejectionComment: t.lastRejectionComment || "",
+  }));
+  data.users = (data.users || []).map((u) => ({
+    active: u.active !== false,
+    ...u,
   }));
   data.reviewQueue = (data.reviewQueue || []).map((r) => ({
     status: r.status || "under_review",
@@ -224,7 +228,7 @@ function hasAll(scope) {
 }
 
 function getCurrentUser() {
-  return state.users.find((u) => u.id === session.userId) || null;
+  return state.users.find((u) => u.id === session.userId && u.active !== false) || null;
 }
 
 function normalizePhone(raw) {
@@ -234,7 +238,7 @@ function normalizePhone(raw) {
 }
 
 function storesForUser(user) {
-  if (!user) return [];
+  if (!user || user.active === false) return [];
   let scoped = state.stores;
   if (!hasAll(user.cityIds)) scoped = scoped.filter((s) => user.cityIds.includes(s.cityId));
   if (!hasAll(user.storeIds)) scoped = scoped.filter((s) => user.storeIds.includes(s.id));
@@ -443,7 +447,7 @@ function renderLogin() {
   document.getElementById("phoneForm").addEventListener("submit", (e) => {
     e.preventDefault();
     const phone = normalizePhone(new FormData(e.currentTarget).get("phone"));
-    const user = state.users.find((u) => normalizePhone(u.phone) === phone);
+    const user = state.users.find((u) => normalizePhone(u.phone) === phone && u.active !== false);
     if (!user) return alert("Phone not found.");
     session.otpPhone = normalizePhone(user.phone);
     session.otpCode = String(Math.floor(100000 + Math.random() * 900000));
@@ -468,6 +472,7 @@ function renderLogin() {
 function renderApp(user) {
   const navMap = {
     dashboard: "Dashboard",
+    users: "User Management",
     reviews: "Admin Reviews",
     field: "Field Work (Mobile)",
     tasks: "Compliance Tasks",
@@ -508,6 +513,7 @@ function renderApp(user) {
 
   const root = document.getElementById("pageRoot");
   if (activePage === "dashboard") root.innerHTML = dashboardHTML(user);
+  if (activePage === "users") root.innerHTML = usersHTML(user);
   if (activePage === "reviews") root.innerHTML = reviewsHTML(user);
   if (activePage === "field") root.innerHTML = fieldHTML(user);
   if (activePage === "tasks") root.innerHTML = tasksHTML(user);
@@ -593,6 +599,73 @@ function dashboardHTML(user) {
     <section class="card" style="margin-top:12px">
       <div class="section-title">Auditor & Maintenance Efficiency (Last 30 Days)</div>
       <div class="table-wrap"><table><thead><tr><th>Agent</th><th>Role</th><th>Tasks Closed</th><th>On-Time %</th><th>Avg Delay (days)</th></tr></thead><tbody>${efficiencyRows || '<tr><td colspan="5">No efficiency data yet.</td></tr>'}</tbody></table></div>
+    </section>
+  `;
+}
+
+function usersHTML(user) {
+  if (user.role !== "admin") {
+    return `<section class="card">Only admin can manage users.</section>`;
+  }
+
+  const rows = state.users
+    .map((u) => {
+      const cityScope = hasAll(u.cityIds) ? "All Cities" : (u.cityIds || []).map((id) => state.cities.find((c) => c.id === id)?.name || id).join(", ");
+      const storeScope = hasAll(u.storeIds) ? "All Stores" : (u.storeIds || []).map((id) => state.stores.find((s) => s.id === id)?.code || id).join(", ");
+      return `<tr>
+        <td>${escapeHtml(u.name)}</td>
+        <td>${normalizePhone(u.phone)}</td>
+        <td>${teamLabel(u.role)}</td>
+        <td>${escapeHtml(cityScope || "-")}</td>
+        <td>${escapeHtml(storeScope || "-")}</td>
+        <td>${u.active === false ? '<span class="badge overdue">Inactive</span>' : '<span class="badge ok">Active</span>'}</td>
+        <td>${u.id === user.id ? "-" : `<button class="secondary" data-toggle-user="${u.id}">${u.active === false ? "Activate" : "Deactivate"}</button>`}</td>
+      </tr>`;
+    })
+    .join("");
+
+  return `
+    <header class="page-header">
+      <div>
+        <h1 class="header-title">User Management</h1>
+        <p class="subtitle">Create user types and set authorization by city/store scope</p>
+      </div>
+    </header>
+
+    <section class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Name</th><th>Phone</th><th>Role</th><th>City Scope</th><th>Store Scope</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="7">No users found.</td></tr>'}</tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:12px">
+      <div class="section-title">Add User</div>
+      <form id="userForm" class="form-grid three">
+        <div><label>Name</label><input name="name" required placeholder="Employee name" /></div>
+        <div><label>Phone (10 digits)</label><input name="phone" required placeholder="9999999999" /></div>
+        <div><label>Role</label><select name="role">
+          <option value="manager">Manager</option>
+          <option value="maintenance">Maintenance</option>
+          <option value="accounts">Accounts</option>
+          <option value="compliance">Compliance</option>
+          <option value="auditor">Auditor</option>
+          <option value="admin">Admin</option>
+        </select></div>
+        <div><label>City Access</label><select name="cityIds" multiple size="5">${state.cities.map((c) => `<option value="${c.id}">${c.name}</option>`).join("")}</select></div>
+        <div><label>Store Access</label><select name="storeIds" multiple size="5">${state.stores.map((s) => `<option value="${s.id}">${formatStore(s.id)}</option>`).join("")}</select></div>
+        <div>
+          <label>Scope Preset</label>
+          <select name="scopePreset">
+            <option value="all">All Cities + All Stores</option>
+            <option value="custom">Use Selected City/Store</option>
+          </select>
+        </div>
+        <div class="actions" style="grid-column:1/-1"><button class="primary" type="submit">Create User</button></div>
+      </form>
+      <p class="help">For custom scope, select city/store using Ctrl/Cmd click for multi-select.</p>
     </section>
   `;
 }
@@ -1019,6 +1092,56 @@ function wireEvents(user) {
       render();
     });
   });
+
+  document.querySelectorAll("[data-toggle-user]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (user.role !== "admin") return;
+      const target = state.users.find((u) => u.id === btn.dataset.toggleUser);
+      if (!target) return;
+      target.active = target.active === false;
+      await saveState();
+      render();
+    });
+  });
+
+  const userForm = document.getElementById("userForm");
+  if (userForm) {
+    userForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (user.role !== "admin") return;
+      const fd = new FormData(userForm);
+      const phone = normalizePhone(fd.get("phone"));
+      if (!/^\d{10}$/.test(phone)) {
+        alert("Enter a valid 10-digit phone number.");
+        return;
+      }
+      if (state.users.some((u) => normalizePhone(u.phone) === phone)) {
+        alert("This phone number already exists.");
+        return;
+      }
+      const preset = String(fd.get("scopePreset") || "all");
+      const selectedCityIds = Array.from(userForm.querySelector('[name=\"cityIds\"]').selectedOptions).map((o) => o.value);
+      const selectedStoreIds = Array.from(userForm.querySelector('[name=\"storeIds\"]').selectedOptions).map((o) => o.value);
+      const cityIds = preset === "all" ? ["all"] : selectedCityIds;
+      const storeIds = preset === "all" ? ["all"] : selectedStoreIds;
+      if (preset === "custom" && (!cityIds.length || !storeIds.length)) {
+        alert("For custom scope, select at least one city and one store.");
+        return;
+      }
+
+      state.users.push({
+        id: uid("u"),
+        name: String(fd.get("name") || "").trim(),
+        phone,
+        role: String(fd.get("role") || "manager"),
+        cityIds,
+        storeIds,
+        active: true,
+      });
+      await saveState();
+      render();
+    });
+  }
 
   const docForm = document.getElementById("docForm");
   if (docForm) {

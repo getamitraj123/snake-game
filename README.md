@@ -6,6 +6,10 @@ Web-first fire compliance portal with mobile field workflow and central sync sup
 
 - Phone + OTP login flow (demo OTP in UI)
 - Role-based access: `Admin`, `Maintenance`, `Compliance`, `Auditor`, `Accounts`, `Manager`
+- Admin User Management:
+  - Create users with role assignment
+  - Assign city/store authorization scope
+  - Activate/deactivate users
 - Store/city scoped visibility
 - Dashboard for pending, overdue, expiring, and critical items
 - Dashboard drilldown:
