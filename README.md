@@ -10,11 +10,16 @@ Web-first fire compliance portal with mobile field workflow and central sync sup
   - Create users with role assignment
   - Assign city/store authorization scope
   - Activate/deactivate users
+  - Configure role permission matrix from frontend (pages + actions)
 - Store/city scoped visibility
 - Dashboard for pending, overdue, expiring, and critical items
 - Dashboard drilldown:
   - Work done in last 7 days by category/subcategory
   - Auditor and maintenance efficiency (last 30 days)
+  - Filter reports by city, store, team, and status
+- Audit trail:
+  - Tracks key create/edit/approve/reject/toggle actions
+  - Captures actor name, actor email, and timestamp
 - Compliance tasks with recurring + one-time logic
 - Review workflow:
   - Field uploads go to admin review queue first
@@ -30,7 +35,11 @@ Web-first fire compliance portal with mobile field workflow and central sync sup
   - Add text description and submit from store
 - Document vault with expiry tracking
 - Asset register for fire/electrical/gas safety
-- Admin template manager for add/remove/frequency configuration
+- Admin master configuration from frontend:
+  - Compliance task item types (create/edit/activate/deactivate)
+  - Document types (create/edit/activate/deactivate)
+  - Asset types (create/edit/activate/deactivate)
+  - Historical data safety: no hard-delete of master types from UI; past submitted records remain intact
 
 ## Demo users
 

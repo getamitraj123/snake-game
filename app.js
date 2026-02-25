@@ -3,17 +3,16 @@ const LOCAL_STATE_KEY = "fireComplianceStateFallbackV1";
 const API_STATE = "/api/state";
 const API_UPLOAD = "/api/upload";
 
-const TEAM_OPTIONS = ["maintenance", "compliance", "accounts"];
 const CATEGORY_OPTIONS = ["gas_safety", "electrical_safety", "fire_system", "licensing", "training", "other"];
 
 const seedState = {
   users: [
-    { id: "u-admin", name: "Admin User", phone: "9999999990", role: "admin", cityIds: ["all"], storeIds: ["all"] },
-    { id: "u-maint", name: "Maintenance Lead", phone: "9999999991", role: "maintenance", cityIds: ["city-delhi", "city-mumbai"], storeIds: ["all"] },
-    { id: "u-accounts", name: "Accounts Team", phone: "9999999992", role: "accounts", cityIds: ["all"], storeIds: ["all"] },
-    { id: "u-manager", name: "Store Manager", phone: "9999999993", role: "manager", cityIds: ["city-delhi"], storeIds: ["s-del-01", "s-del-02"] },
-    { id: "u-compliance", name: "Compliance Officer", phone: "9999999994", role: "compliance", cityIds: ["all"], storeIds: ["all"] },
-    { id: "u-auditor", name: "Field Auditor", phone: "9999999995", role: "auditor", cityIds: ["all"], storeIds: ["all"] },
+    { id: "u-admin", name: "Admin User", email: "admin@company.com", phone: "9999999990", role: "admin", cityIds: ["all"], storeIds: ["all"] },
+    { id: "u-maint", name: "Maintenance Lead", email: "maintenance@company.com", phone: "9999999991", role: "maintenance", cityIds: ["city-delhi", "city-mumbai"], storeIds: ["all"] },
+    { id: "u-accounts", name: "Accounts Team", email: "accounts@company.com", phone: "9999999992", role: "accounts", cityIds: ["all"], storeIds: ["all"] },
+    { id: "u-manager", name: "Store Manager", email: "manager@company.com", phone: "9999999993", role: "manager", cityIds: ["city-delhi"], storeIds: ["s-del-01", "s-del-02"] },
+    { id: "u-compliance", name: "Compliance Officer", email: "compliance@company.com", phone: "9999999994", role: "compliance", cityIds: ["all"], storeIds: ["all"] },
+    { id: "u-auditor", name: "Field Auditor", email: "auditor@company.com", phone: "9999999995", role: "auditor", cityIds: ["all"], storeIds: ["all"] },
   ],
   cities: [
     { id: "city-delhi", name: "Delhi" },
@@ -41,8 +40,24 @@ const seedState = {
     { id: "t-extinguisher-test", name: "Fire Extinguisher Bills and Testing Report", category: "fire_system", subcategory: "Extinguisher", team: "compliance", frequencyType: "days", frequencyValue: 365, evidenceType: "document", mandatory: true, scope: "all", active: true, alerts: "90,60,30" },
     { id: "t-ext-refill", name: "Fire Extinguisher Refill Bills", category: "fire_system", subcategory: "Refill", team: "compliance", frequencyType: "days", frequencyValue: 365, evidenceType: "document", mandatory: true, scope: "all", active: true, alerts: "90,60,30" },
   ],
+  documentTypes: [
+    { id: "dt-fire-noc", name: "Fire NOC from Fire Department", description: "State fire license/NOC", active: true },
+    { id: "dt-lpg-inspection", name: "LPG Inspection Report", description: "Licensed LPG inspection report", active: true },
+    { id: "dt-lpg-components", name: "Purchase of LPG Components", description: "Bills for LPG components", active: true },
+    { id: "dt-electrical-components", name: "Purchase of Electrical Components", description: "Bills for electrical components", active: true },
+    { id: "dt-extinguisher-test", name: "Fire Extinguisher Bills and Testing Report", description: "Extinguisher test certificates and bills", active: true },
+  ],
+  assetTypes: [
+    { id: "at-extinguisher", name: "Fire Extinguisher", description: "Portable extinguisher unit", active: true },
+    { id: "at-fire-alarm", name: "Fire Alarm Panel", description: "Main fire alarm panel", active: true },
+    { id: "at-lpg-detector", name: "LPG Detector", description: "LPG leak detector", active: true },
+    { id: "at-rccb", name: "RCCB", description: "Residual current circuit breaker", active: true },
+    { id: "at-mcb", name: "MCB Panel", description: "Electrical panel safety", active: true },
+    { id: "at-gas-valve", name: "Gas Pipeline Valve", description: "Gas valve / regulator", active: true },
+  ],
   tasks: [],
   reviewQueue: [],
+  auditLogs: [],
   documents: [],
   assets: [
     {
@@ -62,23 +77,32 @@ const seedState = {
   ],
 };
 
-const roleLabels = {
-  admin: "Admin",
-  maintenance: "Maintenance",
-  accounts: "Accounts",
-  manager: "Manager",
-  compliance: "Compliance",
-  auditor: "Auditor",
+const DEFAULT_ROLE_META = {
+  admin: { name: "Admin", description: "Full control across system settings and approvals." },
+  maintenance: { name: "Maintenance", description: "Field team for periodic preventive checks." },
+  accounts: { name: "Accounts", description: "Central document and renewal visibility." },
+  manager: { name: "Manager", description: "Store-level business and compliance visibility." },
+  compliance: { name: "Compliance", description: "Central compliance document ownership." },
+  auditor: { name: "Auditor", description: "Field auditor for onsite evidence uploads." },
 };
 
-const roleNav = {
-  admin: ["dashboard", "users", "reviews", "field", "tasks", "documents", "assets", "templates"],
-  maintenance: ["dashboard", "field", "tasks", "assets"],
-  compliance: ["dashboard", "field", "tasks", "documents", "assets"],
-  auditor: ["dashboard", "field", "tasks"],
-  accounts: ["dashboard", "documents"],
-  manager: ["dashboard", "documents"],
-};
+const PERMISSION_DEFS = [
+  { key: "page_dashboard", label: "Page: Dashboard" },
+  { key: "page_users", label: "Page: User Management" },
+  { key: "page_reviews", label: "Page: Admin Reviews" },
+  { key: "page_field", label: "Page: Field Work" },
+  { key: "page_tasks", label: "Page: Compliance Tasks" },
+  { key: "page_documents", label: "Page: Documents" },
+  { key: "page_assets", label: "Page: Asset Register" },
+  { key: "page_templates", label: "Page: Template Manager" },
+  { key: "page_audit", label: "Page: Audit Trail" },
+  { key: "action_field_submit", label: "Action: Submit Field Upload" },
+  { key: "action_docs_upload", label: "Action: Upload Central Document" },
+  { key: "action_asset_edit", label: "Action: Add/Edit Assets" },
+  { key: "action_user_manage", label: "Action: Add/Disable Users" },
+  { key: "action_template_manage", label: "Action: Manage Templates" },
+  { key: "action_review_decide", label: "Action: Approve/Reject Reviews" },
+];
 
 const app = document.getElementById("app");
 let state = null;
@@ -87,6 +111,13 @@ let serverSync = false;
 let activePage = "dashboard";
 let fieldStoreId = "";
 const fieldDrafts = {};
+let dashboardFilters = {
+  cityId: "all",
+  storeId: "all",
+  team: "all",
+  status: "all",
+};
+const PAGE_ORDER = ["field", "documents", "dashboard", "tasks", "reviews", "users", "templates", "assets", "audit"];
 
 bootstrap();
 
@@ -111,6 +142,12 @@ function normalizeState(input) {
   if (!Array.isArray(data.templates) || data.templates.length === 0) {
     data.templates = structuredClone(seedState.templates);
   }
+  if (!Array.isArray(data.documentTypes) || data.documentTypes.length === 0) {
+    data.documentTypes = structuredClone(seedState.documentTypes);
+  }
+  if (!Array.isArray(data.assetTypes) || data.assetTypes.length === 0) {
+    data.assetTypes = structuredClone(seedState.assetTypes);
+  }
   data.templates = (data.templates || []).map((t) => ({
     category: t.category || inferCategory(t.name),
     subcategory: t.subcategory || "General",
@@ -119,6 +156,7 @@ function normalizeState(input) {
   data.tasks = (data.tasks || []).map((t) => ({
     category: t.category || templateById(t.templateId)?.category || "other",
     subcategory: t.subcategory || templateById(t.templateId)?.subcategory || "General",
+    itemNameSnapshot: t.itemNameSnapshot || templateById(t.templateId)?.name || "Unknown Task Item",
     ...t,
     evidence: Array.isArray(t.evidence) ? t.evidence : [],
     agendaNotes: t.agendaNotes || "",
@@ -128,14 +166,29 @@ function normalizeState(input) {
   }));
   data.users = (data.users || []).map((u) => ({
     active: u.active !== false,
+    email: u.email || `${normalizePhone(u.phone)}@example.local`,
     ...u,
   }));
+  data.roleMeta = mergeRoleMeta(data.roleMeta);
+  data.rolePermissions = mergeRolePermissions(data.rolePermissions, data.roleMeta);
   data.reviewQueue = (data.reviewQueue || []).map((r) => ({
     status: r.status || "under_review",
     adminComment: r.adminComment || "",
+    itemNameSnapshot: r.itemNameSnapshot || templateById(r.templateId)?.name || "Unknown Task Item",
     ...r,
   }));
+  data.auditLogs = Array.isArray(data.auditLogs) ? data.auditLogs : [];
   data.documents = data.documents || [];
+  data.documentTypes = (data.documentTypes || []).map((x) => ({
+    active: x.active !== false,
+    description: x.description || "",
+    ...x,
+  }));
+  data.assetTypes = (data.assetTypes || []).map((x) => ({
+    active: x.active !== false,
+    description: x.description || "",
+    ...x,
+  }));
   data.assets = data.assets || [];
 
   function templateById(id) {
@@ -143,6 +196,145 @@ function normalizeState(input) {
   }
 
   return data;
+}
+
+function defaultRolePermissions() {
+  return {
+    admin: {
+      page_dashboard: true,
+      page_users: true,
+      page_reviews: true,
+      page_field: true,
+      page_tasks: true,
+      page_documents: true,
+      page_assets: true,
+      page_templates: true,
+      page_audit: true,
+      action_field_submit: true,
+      action_docs_upload: true,
+      action_asset_edit: true,
+      action_user_manage: true,
+      action_template_manage: true,
+      action_review_decide: true,
+    },
+    maintenance: {
+      page_dashboard: false,
+      page_users: false,
+      page_reviews: false,
+      page_field: true,
+      page_tasks: false,
+      page_documents: false,
+      page_assets: false,
+      page_templates: false,
+      page_audit: false,
+      action_field_submit: true,
+      action_docs_upload: false,
+      action_asset_edit: false,
+      action_user_manage: false,
+      action_template_manage: false,
+      action_review_decide: false,
+    },
+    auditor: {
+      page_dashboard: false,
+      page_users: false,
+      page_reviews: false,
+      page_field: true,
+      page_tasks: false,
+      page_documents: false,
+      page_assets: false,
+      page_templates: false,
+      page_audit: false,
+      action_field_submit: true,
+      action_docs_upload: false,
+      action_asset_edit: false,
+      action_user_manage: false,
+      action_template_manage: false,
+      action_review_decide: false,
+    },
+    accounts: {
+      page_dashboard: true,
+      page_users: false,
+      page_reviews: false,
+      page_field: false,
+      page_tasks: false,
+      page_documents: true,
+      page_assets: false,
+      page_templates: false,
+      page_audit: false,
+      action_field_submit: false,
+      action_docs_upload: true,
+      action_asset_edit: false,
+      action_user_manage: false,
+      action_template_manage: false,
+      action_review_decide: false,
+    },
+    manager: {
+      page_dashboard: true,
+      page_users: false,
+      page_reviews: false,
+      page_field: false,
+      page_tasks: false,
+      page_documents: true,
+      page_assets: false,
+      page_templates: false,
+      page_audit: false,
+      action_field_submit: false,
+      action_docs_upload: true,
+      action_asset_edit: false,
+      action_user_manage: false,
+      action_template_manage: false,
+      action_review_decide: false,
+    },
+    compliance: {
+      page_dashboard: true,
+      page_users: false,
+      page_reviews: false,
+      page_field: false,
+      page_tasks: false,
+      page_documents: true,
+      page_assets: false,
+      page_templates: false,
+      page_audit: false,
+      action_field_submit: false,
+      action_docs_upload: true,
+      action_asset_edit: false,
+      action_user_manage: false,
+      action_template_manage: false,
+      action_review_decide: false,
+    },
+  };
+}
+
+function mergeRoleMeta(custom) {
+  const merged = structuredClone(DEFAULT_ROLE_META);
+  for (const [roleKey, roleData] of Object.entries(custom || {})) {
+    if (!roleKey) continue;
+    merged[roleKey] = {
+      name: roleData?.name || roleKey,
+      description: roleData?.description || "",
+      ...(merged[roleKey] || {}),
+      ...(roleData || {}),
+    };
+  }
+  return merged;
+}
+
+function getRoleKeys() {
+  return Object.keys(state?.roleMeta || DEFAULT_ROLE_META);
+}
+
+function mergeRolePermissions(custom, roleMeta) {
+  const defaults = defaultRolePermissions();
+  const merged = {};
+  const roles = Object.keys(roleMeta || DEFAULT_ROLE_META);
+  for (const role of roles) {
+    const defaultForRole = defaults[role] || Object.fromEntries(PERMISSION_DEFS.map((p) => [p.key, false]));
+    merged[role] = {
+      ...defaultForRole,
+      ...((custom && custom[role]) || {}),
+    };
+  }
+  return merged;
 }
 
 function inferCategory(name) {
@@ -231,6 +423,22 @@ function getCurrentUser() {
   return state.users.find((u) => u.id === session.userId && u.active !== false) || null;
 }
 
+function hasPermission(role, permissionKey) {
+  return Boolean(state?.rolePermissions?.[role]?.[permissionKey]);
+}
+
+function getAllowedPagesForRole(role) {
+  return PAGE_ORDER.filter((page) => hasPermission(role, `page_${page}`));
+}
+
+function getActiveDocumentTypes() {
+  return (state.documentTypes || []).filter((x) => x.active);
+}
+
+function getActiveAssetTypes() {
+  return (state.assetTypes || []).filter((x) => x.active);
+}
+
 function normalizePhone(raw) {
   const digits = String(raw || "").replace(/\D/g, "");
   if (digits.length <= 10) return digits;
@@ -287,6 +495,7 @@ function createTask(template, storeId, dueDate) {
   return {
     id: uid("task"),
     templateId: template.id,
+    itemNameSnapshot: template.name,
     storeId,
     dueDate,
     status: "pending",
@@ -315,8 +524,28 @@ function formatUser(userId) {
   return u ? u.name : "-";
 }
 
+function getUserEmail(userId) {
+  const u = state.users.find((x) => x.id === userId);
+  return u?.email || "-";
+}
+
 function teamLabel(team) {
-  return roleLabels[team] || team;
+  return state?.roleMeta?.[team]?.name || team;
+}
+
+function addAuditLog(actorUser, actionType, entityType, entityId, details = {}) {
+  const actor = actorUser || getCurrentUser();
+  state.auditLogs.push({
+    id: uid("log"),
+    actionType,
+    entityType,
+    entityId: entityId || null,
+    actorUserId: actor?.id || null,
+    actorName: actor?.name || "System",
+    actorEmail: actor?.email || "system@local",
+    details,
+    createdAt: new Date().toISOString(),
+  });
 }
 
 function escapeHtml(input) {
@@ -413,7 +642,10 @@ function render() {
   if (!state) return;
   const user = getCurrentUser();
   if (!user) return renderLogin();
-  if (!(roleNav[user.role] || []).includes(activePage)) activePage = "dashboard";
+  const allowedPages = getAllowedPagesForRole(user.role);
+  if (!allowedPages.includes(activePage)) {
+    activePage = allowedPages[0] || "dashboard";
+  }
   renderApp(user);
 }
 
@@ -470,15 +702,17 @@ function renderLogin() {
 }
 
 function renderApp(user) {
+  const allowedPages = getAllowedPagesForRole(user.role);
   const navMap = {
+    field: "Field Work (Mobile)",
+    documents: "Central Documents",
     dashboard: "Dashboard",
     users: "User Management",
     reviews: "Admin Reviews",
-    field: "Field Work (Mobile)",
     tasks: "Compliance Tasks",
-    documents: "Documents",
     assets: "Asset Register",
     templates: "Template Manager",
+    audit: "Audit Trail",
   };
 
   app.innerHTML = `
@@ -486,10 +720,10 @@ function renderApp(user) {
       <aside class="sidebar">
         <div class="brand">Fire Compliance Portal</div>
         <p class="brand-sub">Centralized safety, audits and records</p>
-        ${(roleNav[user.role] || []).map((p) => `<button class="nav-btn ${p === activePage ? "active" : ""}" data-page="${p}">${navMap[p]}</button>`).join("")}
+        ${allowedPages.map((p) => `<button class="nav-btn ${p === activePage ? "active" : ""}" data-page="${p}">${navMap[p]}</button>`).join("")}
         <div class="sidebar-foot">
           <div><strong>${user.name}</strong></div>
-          <div>${roleLabels[user.role]}</div>
+          <div>${teamLabel(user.role)}</div>
           <div>${serverSync ? "Central Sync: ON" : "Central Sync: OFF"}</div>
           <button class="signout" id="signOutBtn">Sign out</button>
         </div>
@@ -520,12 +754,29 @@ function renderApp(user) {
   if (activePage === "documents") root.innerHTML = documentsHTML(user);
   if (activePage === "assets") root.innerHTML = assetsHTML(user);
   if (activePage === "templates") root.innerHTML = templatesHTML(user);
+  if (activePage === "audit") root.innerHTML = auditHTML(user);
   wireEvents(user);
 }
 
 function dashboardHTML(user) {
-  const storeIds = storesForUser(user).map((s) => s.id);
-  const scopedTasks = state.tasks.filter((t) => storeIds.includes(t.storeId));
+  const scopedStores = storesForUser(user);
+  const scopedStoreIds = scopedStores.map((s) => s.id);
+  let filteredStoreIds = scopedStoreIds;
+  if (dashboardFilters.cityId !== "all") {
+    filteredStoreIds = filteredStoreIds.filter((sid) => state.stores.find((s) => s.id === sid)?.cityId === dashboardFilters.cityId);
+  }
+  if (dashboardFilters.storeId !== "all") {
+    filteredStoreIds = filteredStoreIds.filter((sid) => sid === dashboardFilters.storeId);
+  }
+
+  let scopedTasks = state.tasks.filter((t) => filteredStoreIds.includes(t.storeId));
+  if (dashboardFilters.team !== "all") {
+    scopedTasks = scopedTasks.filter((t) => t.assignedTeam === dashboardFilters.team);
+  }
+  if (dashboardFilters.status !== "all") {
+    scopedTasks = scopedTasks.filter((t) => t.status === dashboardFilters.status);
+  }
+
   const pending = scopedTasks.filter((t) => t.status === "pending");
   const underReview = scopedTasks.filter((t) => t.status === "under_review");
   const overdue = pending.filter((t) => daysFromToday(t.dueDate) < 0);
@@ -533,8 +784,8 @@ function dashboardHTML(user) {
     const d = daysFromToday(t.dueDate);
     return d >= 0 && d <= 30;
   });
-  const expiringDocs = state.documents.filter((d) => storeIds.includes(d.storeId) && d.expiryDate && daysFromToday(d.expiryDate) <= 60);
-  const criticalAssets = state.assets.filter((a) => storeIds.includes(a.storeId) && a.workingStatus !== "working");
+  const expiringDocs = state.documents.filter((d) => filteredStoreIds.includes(d.storeId) && d.expiryDate && daysFromToday(d.expiryDate) <= 60);
+  const criticalAssets = state.assets.filter((a) => filteredStoreIds.includes(a.storeId) && a.workingStatus !== "working");
 
   const completedLast7 = scopedTasks.filter((t) => t.status === "completed" && withinLastDays(t.submittedAt, 7));
   const categoryMap = {};
@@ -559,7 +810,7 @@ function dashboardHTML(user) {
       const lateDaysTotal = completed.reduce((sum, t) => sum + daysLate(t.dueDate, t.submittedAt), 0);
       const onTimePct = total ? Math.round((onTime / total) * 100) : 0;
       const avgDelay = total ? (lateDaysTotal / total).toFixed(1) : "0.0";
-      return `<tr><td>${u.name}</td><td>${roleLabels[u.role]}</td><td>${total}</td><td>${onTimePct}%</td><td>${avgDelay}</td></tr>`;
+      return `<tr><td>${u.name}</td><td>${teamLabel(u.role)}</td><td>${total}</td><td>${onTimePct}%</td><td>${avgDelay}</td></tr>`;
     })
     .join("");
 
@@ -569,14 +820,32 @@ function dashboardHTML(user) {
     .slice(0, 8)
     .map((t) => {
       const tpl = state.templates.find((x) => x.id === t.templateId);
-      return `<tr><td>${tpl ? tpl.name : "Unknown"}</td><td>${formatStore(t.storeId)}</td><td>${teamLabel(t.assignedTeam)}</td><td>${t.dueDate}</td><td>${statusBadge(t)}</td></tr>`;
+      return `<tr><td>${tpl ? tpl.name : escapeHtml(t.itemNameSnapshot || "Unknown")}</td><td>${formatStore(t.storeId)}</td><td>${teamLabel(t.assignedTeam)}</td><td>${t.dueDate}</td><td>${statusBadge(t)}</td></tr>`;
     })
     .join("");
 
   return `
     <header class="page-header"><div><h1 class="header-title">Dashboard</h1><p class="subtitle">Central status by store, subcategory and team efficiency</p></div></header>
+    <section class="card" style="margin-bottom:12px">
+      <div class="section-title">Report Filters</div>
+      <form id="dashboardFilterForm" class="form-grid three">
+        <div><label>City</label><select name="cityId"><option value="all">All Cities</option>${state.cities
+          .filter((c) => scopedStores.some((s) => s.cityId === c.id))
+          .map((c) => `<option value="${c.id}" ${dashboardFilters.cityId === c.id ? "selected" : ""}>${c.name}</option>`)
+          .join("")}</select></div>
+        <div><label>Store</label><select name="storeId"><option value="all">All Stores</option>${scopedStores
+          .filter((s) => dashboardFilters.cityId === "all" || s.cityId === dashboardFilters.cityId)
+          .map((s) => `<option value="${s.id}" ${dashboardFilters.storeId === s.id ? "selected" : ""}>${formatStore(s.id)}</option>`)
+          .join("")}</select></div>
+        <div><label>Team</label><select name="team"><option value="all">All Teams</option>${getRoleKeys()
+          .map((r) => `<option value="${r}" ${dashboardFilters.team === r ? "selected" : ""}>${teamLabel(r)}</option>`)
+          .join("")}</select></div>
+        <div><label>Status</label><select name="status"><option value="all">All Status</option><option value="pending" ${dashboardFilters.status === "pending" ? "selected" : ""}>Pending</option><option value="under_review" ${dashboardFilters.status === "under_review" ? "selected" : ""}>Under Review</option><option value="completed" ${dashboardFilters.status === "completed" ? "selected" : ""}>Completed</option></select></div>
+        <div class="actions" style="grid-column:1/-1"><button class="secondary" type="button" id="dashboardFilterReset">Reset Filters</button></div>
+      </form>
+    </section>
     <section class="grid kpi">
-      <article class="card"><div>Assigned Stores</div><div class="kpi-num">${storeIds.length}</div></article>
+      <article class="card"><div>Assigned Stores</div><div class="kpi-num">${filteredStoreIds.length}</div></article>
       <article class="card"><div>Pending</div><div class="kpi-num">${pending.length}</div><div class="kpi-note">${overdue.length} overdue</div></article>
       <article class="card"><div>Due in 30 Days</div><div class="kpi-num">${dueSoon.length}</div><div class="kpi-note">Under Review: ${underReview.length}</div></article>
       <article class="card"><div>Expiring Docs</div><div class="kpi-num">${expiringDocs.length}</div><div class="kpi-note">Critical Assets: ${criticalAssets.length}</div></article>
@@ -604,8 +873,8 @@ function dashboardHTML(user) {
 }
 
 function usersHTML(user) {
-  if (user.role !== "admin") {
-    return `<section class="card">Only admin can manage users.</section>`;
+  if (!hasPermission(user.role, "action_user_manage")) {
+    return `<section class="card">You do not have permission to manage users.</section>`;
   }
 
   const rows = state.users
@@ -614,12 +883,36 @@ function usersHTML(user) {
       const storeScope = hasAll(u.storeIds) ? "All Stores" : (u.storeIds || []).map((id) => state.stores.find((s) => s.id === id)?.code || id).join(", ");
       return `<tr>
         <td>${escapeHtml(u.name)}</td>
+        <td>${escapeHtml(u.email || "-")}</td>
         <td>${normalizePhone(u.phone)}</td>
         <td>${teamLabel(u.role)}</td>
         <td>${escapeHtml(cityScope || "-")}</td>
         <td>${escapeHtml(storeScope || "-")}</td>
         <td>${u.active === false ? '<span class="badge overdue">Inactive</span>' : '<span class="badge ok">Active</span>'}</td>
         <td>${u.id === user.id ? "-" : `<button class="secondary" data-toggle-user="${u.id}">${u.active === false ? "Activate" : "Deactivate"}</button>`}</td>
+      </tr>`;
+    })
+    .join("");
+  const permissionRows = getRoleKeys()
+    .map((role) => {
+      const cols = PERMISSION_DEFS.map((perm) => {
+        const checked = hasPermission(role, perm.key) ? "checked" : "";
+        return `<td><input type="checkbox" name="${role}__${perm.key}" ${checked} /></td>`;
+      }).join("");
+      return `<tr><td><strong>${teamLabel(role)}</strong></td>${cols}</tr>`;
+    })
+    .join("");
+  const permissionHeaders = PERMISSION_DEFS.map((perm) => `<th>${perm.label}</th>`).join("");
+  const roleTypeRows = getRoleKeys()
+    .map((role) => {
+      const meta = state.roleMeta?.[role] || { name: role, description: "" };
+      const isDefault = Object.prototype.hasOwnProperty.call(DEFAULT_ROLE_META, role);
+      return `<tr>
+        <td><code>${role}</code></td>
+        <td><input name="role-name-${role}" value="${escapeHtml(meta.name || role)}" /></td>
+        <td><input name="role-desc-${role}" value="${escapeHtml(meta.description || "")}" /></td>
+        <td>${isDefault ? "Default" : "Custom"}</td>
+        <td><button type="button" class="secondary" data-save-role-meta="${role}">Save</button></td>
       </tr>`;
     })
     .join("");
@@ -635,8 +928,8 @@ function usersHTML(user) {
     <section class="card">
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Name</th><th>Phone</th><th>Role</th><th>City Scope</th><th>Store Scope</th><th>Status</th><th>Action</th></tr></thead>
-          <tbody>${rows || '<tr><td colspan="7">No users found.</td></tr>'}</tbody>
+          <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>City Scope</th><th>Store Scope</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="8">No users found.</td></tr>'}</tbody>
         </table>
       </div>
     </section>
@@ -645,14 +938,10 @@ function usersHTML(user) {
       <div class="section-title">Add User</div>
       <form id="userForm" class="form-grid three">
         <div><label>Name</label><input name="name" required placeholder="Employee name" /></div>
+        <div><label>Email</label><input name="email" type="email" required placeholder="name@company.com" /></div>
         <div><label>Phone (10 digits)</label><input name="phone" required placeholder="9999999999" /></div>
-        <div><label>Role</label><select name="role">
-          <option value="manager">Manager</option>
-          <option value="maintenance">Maintenance</option>
-          <option value="accounts">Accounts</option>
-          <option value="compliance">Compliance</option>
-          <option value="auditor">Auditor</option>
-          <option value="admin">Admin</option>
+          <div><label>Role</label><select name="role">
+          ${getRoleKeys().map((role) => `<option value="${role}">${teamLabel(role)}</option>`).join("")}
         </select></div>
         <div><label>City Access</label><select name="cityIds" multiple size="5">${state.cities.map((c) => `<option value="${c.id}">${c.name}</option>`).join("")}</select></div>
         <div><label>Store Access</label><select name="storeIds" multiple size="5">${state.stores.map((s) => `<option value="${s.id}">${formatStore(s.id)}</option>`).join("")}</select></div>
@@ -667,12 +956,45 @@ function usersHTML(user) {
       </form>
       <p class="help">For custom scope, select city/store using Ctrl/Cmd click for multi-select.</p>
     </section>
+
+    <section class="card" style="margin-top:12px">
+      <div class="section-title">Role Permission Settings (Configurable)</div>
+      <form id="permissionForm">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Role</th>${permissionHeaders}</tr></thead>
+            <tbody>${permissionRows}</tbody>
+          </table>
+        </div>
+        <div class="actions">
+          <button class="primary" type="submit">Save Permission Matrix</button>
+        </div>
+      </form>
+      <p class="help">These settings control page access and action rights from frontend without code changes.</p>
+    </section>
+
+    <section class="card" style="margin-top:12px">
+      <div class="section-title">User Type Definitions</div>
+      <form id="roleTypeForm" class="form-grid three">
+        <div><label>Role Key (id)</label><input name="roleKey" placeholder="e.g. city_auditor" /></div>
+        <div><label>Role Name</label><input name="roleName" required placeholder="e.g. City Auditor" /></div>
+        <div><label>Description</label><input name="roleDescription" placeholder="What this user type does" /></div>
+        <div class="actions" style="grid-column:1/-1"><button class="primary" type="submit">Create User Type</button></div>
+      </form>
+      <div class="table-wrap" style="margin-top:10px">
+        <table>
+          <thead><tr><th>Role Key</th><th>Display Name</th><th>Description</th><th>Type</th><th>Action</th></tr></thead>
+          <tbody>${roleTypeRows}</tbody>
+        </table>
+      </div>
+      <p class="help">When a new user type is created, permission defaults are OFF. Enable required rights in the matrix above.</p>
+    </section>
   `;
 }
 
 function reviewsHTML(user) {
-  if (user.role !== "admin") {
-    return `<section class="card">Only admin can review submissions.</section>`;
+  if (!hasPermission(user.role, "action_review_decide")) {
+    return `<section class="card">You do not have permission to review submissions.</section>`;
   }
 
   const queue = state.reviewQueue
@@ -694,7 +1016,7 @@ function reviewsHTML(user) {
       const previewHtml = renderEvidencePreview(r.evidence || []);
       return `
         <article class="card" style="margin-bottom:10px">
-          <div class="section-title">${tpl ? tpl.name : "Unknown Task Item"}</div>
+          <div class="section-title">${tpl ? tpl.name : escapeHtml(r.itemNameSnapshot || "Unknown Task Item")}</div>
           <p class="help">Store: ${formatStore(r.storeId)} | Submitted by: ${formatUser(r.submittedBy)} | Submitted at: ${r.submittedAt?.slice(0, 16).replace("T", " ") || "-"}</p>
           <p class="help">Files: ${escapeHtml(files)}</p>
           <div style="margin-top:8px">${previewHtml}</div>
@@ -730,7 +1052,7 @@ function reviewsHTML(user) {
             ${rejectedQueue
               .map((r) => {
                 const tpl = state.templates.find((t) => t.id === r.templateId);
-                return `<tr><td>${tpl ? tpl.name : "Unknown"}</td><td>${formatStore(r.storeId)}</td><td>${formatUser(r.submittedBy)}</td><td>${r.reviewedAt ? r.reviewedAt.slice(0, 16).replace("T", " ") : "-"}</td><td>${escapeHtml(r.adminComment || "-")}</td></tr>`;
+                return `<tr><td>${tpl ? tpl.name : escapeHtml(r.itemNameSnapshot || "Unknown")}</td><td>${formatStore(r.storeId)}</td><td>${formatUser(r.submittedBy)}</td><td>${r.reviewedAt ? r.reviewedAt.slice(0, 16).replace("T", " ") : "-"}</td><td>${escapeHtml(r.adminComment || "-")}</td></tr>`;
               })
               .join("") || '<tr><td colspan="5">No rejected items in temporary queue.</td></tr>'}
           </tbody>
@@ -757,7 +1079,7 @@ function fieldHTML(user) {
         <article class="card" style="margin-bottom:10px">
           <div class="row" style="justify-content:space-between;align-items:center">
             <div>
-              <div style="font-weight:700">${tpl ? tpl.name : "Unknown Item"}</div>
+              <div style="font-weight:700">${tpl ? tpl.name : escapeHtml(t.itemNameSnapshot || "Unknown Item")}</div>
               <div class="help">Due: ${t.dueDate} | Team: ${teamLabel(t.assignedTeam)} | ${categoryLabel(t.category)} / ${t.subcategory}</div>
               ${t.lastRejectionComment ? `<div class="help" style="color:#b42318">Last rejection comment: ${escapeHtml(t.lastRejectionComment)}</div>` : ""}
             </div>
@@ -832,7 +1154,7 @@ function tasksHTML(user) {
       const tpl = state.templates.find((x) => x.id === t.templateId);
       const files = t.evidence.length ? t.evidence.map((e) => e.fileName).join(", ") : "-";
       const meta = t.fieldMeta?.geo ? `${t.fieldMeta.geo.lat.toFixed(5)}, ${t.fieldMeta.geo.lng.toFixed(5)}` : "-";
-      return `<tr><td>${tpl ? tpl.name : "Unknown"}</td><td>${formatStore(t.storeId)}</td><td>${categoryLabel(t.category)} / ${t.subcategory}</td><td>${t.dueDate}</td><td>${statusBadge(t)}</td><td>${files}</td><td>${meta}</td><td>${t.submittedAt ? `${t.submittedAt.slice(0, 16).replace("T", " ")} by ${formatUser(t.submittedBy)}` : "-"}</td></tr>`;
+      return `<tr><td>${tpl ? tpl.name : escapeHtml(t.itemNameSnapshot || "Unknown")}</td><td>${formatStore(t.storeId)}</td><td>${categoryLabel(t.category)} / ${t.subcategory}</td><td>${t.dueDate}</td><td>${statusBadge(t)}</td><td>${files}</td><td>${meta}</td><td>${t.submittedAt ? `${t.submittedAt.slice(0, 16).replace("T", " ")} by ${formatUser(t.submittedBy)}` : "-"}</td></tr>`;
     })
     .join("");
 
@@ -856,7 +1178,8 @@ function documentsHTML(user) {
     })
     .join("");
 
-  const canAdd = user.role !== "manager";
+  const canAdd = hasPermission(user.role, "action_docs_upload");
+  const docTypeOptions = getActiveDocumentTypes();
   return `
     <header class="page-header"><div><h1 class="header-title">Documents</h1><p class="subtitle">Licenses, reports and bills</p></div></header>
     <section class="card"><div class="table-wrap"><table><thead><tr><th>Type</th><th>Store</th><th>Owner</th><th>Expiry</th><th>Status</th><th>File</th><th>Uploaded</th></tr></thead><tbody>${rows || '<tr><td colspan="7">No documents yet.</td></tr>'}</tbody></table></div></section>
@@ -864,9 +1187,9 @@ function documentsHTML(user) {
       <section class="card" style="margin-top:12px">
         <div class="section-title">Add Document</div>
         <form id="docForm" class="form-grid three">
-          <div><label>Document Type</label><input name="docType" required /></div>
+          <div><label>Document Type</label><select name="docType" required>${docTypeOptions.map((d) => `<option value="${escapeHtml(d.name)}">${escapeHtml(d.name)}</option>`).join("")}</select></div>
           <div><label>Store</label><select name="storeId">${stores.map((s) => `<option value="${s.id}">${formatStore(s.id)}</option>`).join("")}</select></div>
-          <div><label>Owner Team</label><select name="ownerTeam">${TEAM_OPTIONS.map((x) => `<option value="${x}">${teamLabel(x)}</option>`).join("")}</select></div>
+          <div><label>Owner Team</label><select name="ownerTeam">${getRoleKeys().map((x) => `<option value="${x}">${teamLabel(x)}</option>`).join("")}</select></div>
           <div><label>Expiry Date</label><input name="expiryDate" type="date" /></div>
           <div><label>File</label><input name="file" type="file" required /></div>
           <div class="actions" style="grid-column:1/-1"><button class="primary" type="submit">Save Document</button></div>
@@ -884,7 +1207,8 @@ function assetsHTML(user) {
     .map((a) => `<tr><td>${a.type}</td><td>${a.itemName}</td><td>${formatStore(a.storeId)}</td><td>${a.serialNo || "-"}</td><td>${a.count || "-"}</td><td>${a.fillStatus || "-"}</td><td>${a.workingStatus || "-"}</td><td>${a.lastCheckedOn || "-"}</td><td>${a.nextDueOn || "-"}</td></tr>`)
     .join("");
 
-  const canEdit = ["admin", "maintenance", "compliance"].includes(user.role);
+  const canEdit = hasPermission(user.role, "action_asset_edit");
+  const assetTypeOptions = getActiveAssetTypes();
   return `
     <header class="page-header"><div><h1 class="header-title">Asset Register</h1><p class="subtitle">Extinguishers, detectors, electrical and gas assets</p></div></header>
     <section class="card"><div class="table-wrap"><table><thead><tr><th>Type</th><th>Item</th><th>Store</th><th>Serial</th><th>Count</th><th>Fill</th><th>Working</th><th>Last Check</th><th>Next Due</th></tr></thead><tbody>${rows || '<tr><td colspan="9">No assets yet.</td></tr>'}</tbody></table></div></section>
@@ -892,7 +1216,7 @@ function assetsHTML(user) {
       <section class="card" style="margin-top:12px">
         <div class="section-title">Add Asset</div>
         <form id="assetForm" class="form-grid three">
-          <div><label>Asset Type</label><select name="type"><option>Fire Extinguisher</option><option>Fire Alarm Panel</option><option>LPG Detector</option><option>RCCB</option><option>MCB Panel</option><option>Gas Pipeline Valve</option><option>Other</option></select></div>
+          <div><label>Asset Type</label><select name="type">${assetTypeOptions.map((a) => `<option value="${escapeHtml(a.name)}">${escapeHtml(a.name)}</option>`).join("")}</select></div>
           <div><label>Item Name</label><input name="itemName" required /></div>
           <div><label>Store</label><select name="storeId">${stores.map((s) => `<option value="${s.id}">${formatStore(s.id)}</option>`).join("")}</select></div>
           <div><label>Serial No</label><input name="serialNo" /></div>
@@ -911,38 +1235,124 @@ function assetsHTML(user) {
 }
 
 function templatesHTML(user) {
-  if (user.role !== "admin") return `<section class="card">Only admin can manage templates.</section>`;
+  if (!hasPermission(user.role, "action_template_manage")) return `<section class="card">You do not have permission to manage templates.</section>`;
   const rows = state.templates
-    .map((t) => `<tr><td>${t.name}</td><td>${categoryLabel(t.category)}</td><td>${t.subcategory || "General"}</td><td>${teamLabel(t.team)}</td><td>${t.frequencyType === "one_time" ? "One-time" : `Every ${t.frequencyValue} days`}</td><td>${t.evidenceType}</td><td>${t.mandatory ? "Yes" : "No"}</td><td>${t.active ? "Active" : "Inactive"}</td><td><button class="secondary" data-toggle-template="${t.id}">${t.active ? "Deactivate" : "Activate"}</button></td></tr>`)
+    .map(
+      (t) =>
+        `<tr><td>${escapeHtml(t.name)}</td><td>${categoryLabel(t.category)}</td><td>${escapeHtml(t.subcategory || "General")}</td><td>${teamLabel(t.team)}</td><td>${t.frequencyType === "one_time" ? "One-time" : `Every ${t.frequencyValue} days`}</td><td>${t.evidenceType}</td><td>${t.mandatory ? "Yes" : "No"}</td><td>${t.active ? "Active" : "Inactive"}</td><td><button class="secondary" data-edit-template="${t.id}">Edit</button> <button class="secondary" data-toggle-template="${t.id}">${t.active ? "Deactivate" : "Activate"}</button></td></tr>`
+    )
+    .join("");
+  const docTypeRows = (state.documentTypes || [])
+    .map(
+      (d) =>
+        `<tr><td>${escapeHtml(d.name)}</td><td>${escapeHtml(d.description || "-")}</td><td>${d.active ? "Active" : "Inactive"}</td><td><button class="secondary" data-edit-doc-type="${d.id}">Edit</button> <button class="secondary" data-toggle-doc-type="${d.id}">${d.active ? "Deactivate" : "Activate"}</button></td></tr>`
+    )
+    .join("");
+  const assetTypeRows = (state.assetTypes || [])
+    .map(
+      (a) =>
+        `<tr><td>${escapeHtml(a.name)}</td><td>${escapeHtml(a.description || "-")}</td><td>${a.active ? "Active" : "Inactive"}</td><td><button class="secondary" data-edit-asset-type="${a.id}">Edit</button> <button class="secondary" data-toggle-asset-type="${a.id}">${a.active ? "Deactivate" : "Activate"}</button></td></tr>`
+    )
     .join("");
 
   return `
     <header class="page-header"><div><h1 class="header-title">Template Manager</h1><p class="subtitle">Add/remove and configure compliance items</p></div></header>
     <section class="card"><div class="table-wrap"><table><thead><tr><th>Item</th><th>Category</th><th>Subcategory</th><th>Team</th><th>Frequency</th><th>Evidence</th><th>Mandatory</th><th>Status</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div></section>
     <section class="card" style="margin-top:12px">
-      <div class="section-title">Add Compliance Item</div>
+      <div class="section-title">Create / Edit Compliance Task Item Type</div>
       <form id="templateForm" class="form-grid three">
+        <input type="hidden" name="templateId" />
         <div><label>Item Name</label><input name="name" required /></div>
         <div><label>Category</label><select name="category">${CATEGORY_OPTIONS.map((x) => `<option value="${x}">${categoryLabel(x)}</option>`).join("")}</select></div>
         <div><label>Subcategory</label><input name="subcategory" placeholder="e.g. LPG Detector" /></div>
-        <div><label>Owner Team</label><select name="team">${TEAM_OPTIONS.map((x) => `<option value="${x}">${teamLabel(x)}</option>`).join("")}</select></div>
+        <div><label>Owner Team</label><select name="team">${getRoleKeys().map((x) => `<option value="${x}">${teamLabel(x)}</option>`).join("")}</select></div>
         <div><label>Frequency Type</label><select name="frequencyType" id="freqType"><option value="days">Every X days</option><option value="one_time">One-time</option></select></div>
         <div><label>Frequency Value</label><input name="frequencyValue" id="freqValue" type="number" min="1" value="90" /></div>
         <div><label>Evidence Type</label><select name="evidenceType"><option value="video">Video</option><option value="photo">Photo</option><option value="document">Document</option><option value="multiple">Multiple</option></select></div>
         <div><label>Mandatory</label><select name="mandatory"><option value="true">Yes</option><option value="false">No</option></select></div>
         <div><label>Scope</label><select name="scope"><option value="all">All Stores</option>${state.cities.map((c) => `<option value="city:${c.id}">City: ${c.name}</option>`).join("")}${state.stores.map((s) => `<option value="store:${s.id}">Store: ${formatStore(s.id)}</option>`).join("")}</select></div>
         <div><label>Alerts (days)</label><input name="alerts" placeholder="30,15,7" /></div>
-        <div class="actions" style="grid-column:1/-1"><button class="primary" type="submit">Add Item</button></div>
+        <div class="actions" style="grid-column:1/-1"><button class="primary" type="submit">Save Task Item Type</button><button class="secondary" type="button" id="templateFormReset">Reset</button></div>
+      </form>
+    </section>
+
+    <section class="card" style="margin-top:12px">
+      <div class="section-title">Document Types</div>
+      <div class="table-wrap"><table><thead><tr><th>Name</th><th>Description</th><th>Status</th><th>Action</th></tr></thead><tbody>${docTypeRows || '<tr><td colspan="4">No document types.</td></tr>'}</tbody></table></div>
+      <form id="docTypeForm" class="form-grid" style="margin-top:10px">
+        <input type="hidden" name="docTypeId" />
+        <div><label>Document Type Name</label><input name="name" required placeholder="e.g. Electrical Safety Certificate" /></div>
+        <div><label>Description</label><input name="description" placeholder="Short description" /></div>
+        <div class="actions" style="grid-column:1/-1"><button class="primary" type="submit">Save Document Type</button><button class="secondary" type="button" id="docTypeFormReset">Reset</button></div>
+      </form>
+    </section>
+
+    <section class="card" style="margin-top:12px">
+      <div class="section-title">Asset Types</div>
+      <div class="table-wrap"><table><thead><tr><th>Name</th><th>Description</th><th>Status</th><th>Action</th></tr></thead><tbody>${assetTypeRows || '<tr><td colspan="4">No asset types.</td></tr>'}</tbody></table></div>
+      <form id="assetTypeForm" class="form-grid" style="margin-top:10px">
+        <input type="hidden" name="assetTypeId" />
+        <div><label>Asset Type Name</label><input name="name" required placeholder="e.g. Fire Hose Reel" /></div>
+        <div><label>Description</label><input name="description" placeholder="Short description" /></div>
+        <div class="actions" style="grid-column:1/-1"><button class="primary" type="submit">Save Asset Type</button><button class="secondary" type="button" id="assetTypeFormReset">Reset</button></div>
       </form>
     </section>
   `;
 }
 
+function auditHTML(user) {
+  if (!hasPermission(user.role, "page_audit")) {
+    return `<section class="card">You do not have permission to view audit trail.</section>`;
+  }
+  const rows = (state.auditLogs || [])
+    .slice()
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+    .slice(0, 300)
+    .map(
+      (log) =>
+        `<tr><td>${log.createdAt ? log.createdAt.slice(0, 19).replace("T", " ") : "-"}</td><td>${escapeHtml(log.actorName || "-")}</td><td>${escapeHtml(log.actorEmail || "-")}</td><td>${escapeHtml(log.actionType || "-")}</td><td>${escapeHtml(log.entityType || "-")}</td><td>${escapeHtml(log.entityId || "-")}</td><td>${escapeHtml(JSON.stringify(log.details || {}))}</td></tr>`
+    )
+    .join("");
+  return `
+    <header class="page-header">
+      <div>
+        <h1 class="header-title">Audit Trail</h1>
+        <p class="subtitle">All key updates with actor email and timestamp</p>
+      </div>
+    </header>
+    <section class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Time</th><th>User</th><th>Email</th><th>Action</th><th>Entity</th><th>Entity ID</th><th>Details</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="7">No audit entries yet.</td></tr>'}</tbody>
+        </table>
+      </div>
+    </section>
+  `;
+}
+
 function wireEvents(user) {
+  const dashboardFilterForm = document.getElementById("dashboardFilterForm");
+  if (dashboardFilterForm) {
+    dashboardFilterForm.addEventListener("change", () => {
+      const fd = new FormData(dashboardFilterForm);
+      dashboardFilters.cityId = String(fd.get("cityId") || "all");
+      dashboardFilters.storeId = String(fd.get("storeId") || "all");
+      dashboardFilters.team = String(fd.get("team") || "all");
+      dashboardFilters.status = String(fd.get("status") || "all");
+      render();
+    });
+  }
+  document.getElementById("dashboardFilterReset")?.addEventListener("click", () => {
+    dashboardFilters = { cityId: "all", storeId: "all", team: "all", status: "all" };
+    render();
+  });
+
   const regen = document.getElementById("regenTasksBtn");
   if (regen) {
     regen.addEventListener("click", async () => {
       ensureRecurringTasks();
+      addAuditLog(user, "GENERATE_DUE_TASKS", "tasks", null, { reason: "manual_regeneration" });
       await saveState();
       render();
     });
@@ -979,6 +1389,9 @@ function wireEvents(user) {
       const taskId = btn.dataset.fieldSubmit;
       const task = state.tasks.find((t) => t.id === taskId);
       if (!task) return;
+      if (!hasPermission(user.role, "action_field_submit")) {
+        return alert("Your role is not allowed to submit field uploads.");
+      }
       if (!canAccessStore(user, task.storeId)) return alert("No access to this store.");
       if (task.assignedTeam !== user.role && !["admin", "auditor"].includes(user.role)) return alert("This task is assigned to another team.");
       if (task.status === "under_review") return alert("This task is already submitted and currently under admin review.");
@@ -1005,6 +1418,7 @@ function wireEvents(user) {
         id: uid("review"),
         taskId: task.id,
         templateId: task.templateId,
+        itemNameSnapshot: task.itemNameSnapshot || state.templates.find((x) => x.id === task.templateId)?.name || "Unknown Task Item",
         storeId: task.storeId,
         evidence: uploaded,
         agendaNotes: mergeNoteWithMeta(note, liveMeta),
@@ -1024,6 +1438,11 @@ function wireEvents(user) {
 
       await stopLiveCapture(task.id, true);
       clearLiveCapture(task.id);
+      addAuditLog(user, "SUBMIT_FOR_REVIEW", "review_queue", reviewEntry.id, {
+        taskId: task.id,
+        storeId: task.storeId,
+        files: uploaded.map((x) => x.fileName),
+      });
       await saveState();
       render();
     });
@@ -1031,7 +1450,7 @@ function wireEvents(user) {
 
   document.querySelectorAll("[data-approve-review]").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      if (user.role !== "admin") return;
+      if (!hasPermission(user.role, "action_review_decide")) return;
       const reviewId = btn.dataset.approveReview;
       const review = state.reviewQueue.find((r) => r.id === reviewId);
       if (!review || review.status !== "under_review") return;
@@ -1056,6 +1475,7 @@ function wireEvents(user) {
       state.reviewQueue = state.reviewQueue.filter(
         (r) => r.id !== review.id && !(r.taskId === task.id && r.status === "rejected")
       );
+      addAuditLog(user, "APPROVE_REVIEW", "review_queue", review.id, { taskId: task.id, storeId: task.storeId });
       ensureRecurringTasks();
       await saveState();
       render();
@@ -1064,7 +1484,7 @@ function wireEvents(user) {
 
   document.querySelectorAll("[data-reject-review]").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      if (user.role !== "admin") return;
+      if (!hasPermission(user.role, "action_review_decide")) return;
       const reviewId = btn.dataset.rejectReview;
       const review = state.reviewQueue.find((r) => r.id === reviewId);
       if (!review || review.status !== "under_review") return;
@@ -1088,6 +1508,11 @@ function wireEvents(user) {
       task.evidence = [];
       task.fieldMeta = null;
 
+      addAuditLog(user, "REJECT_REVIEW", "review_queue", review.id, {
+        taskId: task.id,
+        storeId: task.storeId,
+        commentWords: wordCount(comment),
+      });
       await saveState();
       render();
     });
@@ -1095,10 +1520,11 @@ function wireEvents(user) {
 
   document.querySelectorAll("[data-toggle-user]").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      if (user.role !== "admin") return;
+      if (!hasPermission(user.role, "action_user_manage")) return;
       const target = state.users.find((u) => u.id === btn.dataset.toggleUser);
       if (!target) return;
       target.active = target.active === false;
+      addAuditLog(user, "TOGGLE_USER_STATUS", "users", target.id, { active: target.active });
       await saveState();
       render();
     });
@@ -1108,15 +1534,24 @@ function wireEvents(user) {
   if (userForm) {
     userForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      if (user.role !== "admin") return;
+      if (!hasPermission(user.role, "action_user_manage")) return;
       const fd = new FormData(userForm);
       const phone = normalizePhone(fd.get("phone"));
+      const email = String(fd.get("email") || "").trim().toLowerCase();
       if (!/^\d{10}$/.test(phone)) {
         alert("Enter a valid 10-digit phone number.");
         return;
       }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        alert("Enter a valid email address.");
+        return;
+      }
       if (state.users.some((u) => normalizePhone(u.phone) === phone)) {
         alert("This phone number already exists.");
+        return;
+      }
+      if (state.users.some((u) => String(u.email || "").toLowerCase() === email)) {
+        alert("This email already exists.");
         return;
       }
       const preset = String(fd.get("scopePreset") || "all");
@@ -1132,13 +1567,96 @@ function wireEvents(user) {
       state.users.push({
         id: uid("u"),
         name: String(fd.get("name") || "").trim(),
+        email,
         phone,
         role: String(fd.get("role") || "manager"),
         cityIds,
         storeIds,
         active: true,
       });
+      addAuditLog(user, "CREATE_USER", "users", state.users[state.users.length - 1].id, {
+        role: state.users[state.users.length - 1].role,
+        cityIds,
+        storeIds,
+      });
       await saveState();
+      render();
+    });
+  }
+
+  const roleTypeForm = document.getElementById("roleTypeForm");
+  if (roleTypeForm) {
+    roleTypeForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!hasPermission(user.role, "action_user_manage")) return;
+      const fd = new FormData(roleTypeForm);
+      const name = String(fd.get("roleName") || "").trim();
+      const description = String(fd.get("roleDescription") || "").trim();
+      let roleKey = String(fd.get("roleKey") || "").trim().toLowerCase();
+      if (!name) return alert("Role name is required.");
+      if (!roleKey) {
+        roleKey = name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "_")
+          .replace(/^_+|_+$/g, "");
+      }
+      if (!/^[a-z][a-z0-9_]{2,40}$/.test(roleKey)) {
+        return alert("Role key must be 3-40 chars, lowercase letters/numbers/underscore, and start with a letter.");
+      }
+      if (state.roleMeta[roleKey]) {
+        return alert("Role key already exists.");
+      }
+
+      state.roleMeta[roleKey] = { name, description };
+      state.rolePermissions[roleKey] = Object.fromEntries(PERMISSION_DEFS.map((p) => [p.key, false]));
+      addAuditLog(user, "CREATE_ROLE_TYPE", "role_meta", roleKey, { name, description });
+      await saveState();
+      render();
+    });
+  }
+
+  document.querySelectorAll("[data-save-role-meta]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!hasPermission(user.role, "action_user_manage")) return;
+      const role = btn.dataset.saveRoleMeta;
+      if (!state.roleMeta[role]) return;
+      const nameInput = document.querySelector(`[name="role-name-${role}"]`);
+      const descInput = document.querySelector(`[name="role-desc-${role}"]`);
+      const updatedName = String(nameInput?.value || "").trim();
+      const updatedDesc = String(descInput?.value || "").trim();
+      if (!updatedName) return alert("Role display name cannot be empty.");
+      state.roleMeta[role].name = updatedName;
+      state.roleMeta[role].description = updatedDesc;
+      addAuditLog(user, "UPDATE_ROLE_TYPE", "role_meta", role, { name: updatedName, description: updatedDesc });
+      await saveState();
+      render();
+    });
+  });
+
+  const permissionForm = document.getElementById("permissionForm");
+  if (permissionForm) {
+    permissionForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!hasPermission(user.role, "action_user_manage")) return;
+      const updated = {};
+      for (const role of getRoleKeys()) {
+        updated[role] = {};
+        for (const perm of PERMISSION_DEFS) {
+          const key = `${role}__${perm.key}`;
+          const input = permissionForm.querySelector(`[name="${key}"]`);
+          updated[role][perm.key] = Boolean(input?.checked);
+        }
+      }
+
+      // Hard safety guard to prevent permanent admin lockout.
+      updated.admin.page_users = true;
+      updated.admin.action_user_manage = true;
+      updated.admin.page_dashboard = true;
+
+      state.rolePermissions = mergeRolePermissions(updated, state.roleMeta);
+      addAuditLog(user, "UPDATE_PERMISSION_MATRIX", "role_permissions", null, { roles: getRoleKeys() });
+      await saveState();
+      alert("Permission settings saved.");
       render();
     });
   }
@@ -1164,6 +1682,10 @@ function wireEvents(user) {
         mimeType: uploaded[0]?.mimeType || file.type || "application/octet-stream",
         uploadedAt: new Date().toISOString(),
         uploadedBy: user.id,
+      });
+      addAuditLog(user, "UPLOAD_DOCUMENT", "documents", state.documents[state.documents.length - 1].id, {
+        docType: state.documents[state.documents.length - 1].docType,
+        storeId,
       });
       await saveState();
       render();
@@ -1191,6 +1713,10 @@ function wireEvents(user) {
         nextDueOn: String(fd.get("nextDueOn") || ""),
         notes: String(fd.get("notes") || "").trim(),
       });
+      addAuditLog(user, "CREATE_ASSET_RECORD", "assets", state.assets[state.assets.length - 1].id, {
+        storeId,
+        type: state.assets[state.assets.length - 1].type,
+      });
       await saveState();
       render();
     });
@@ -1198,13 +1724,106 @@ function wireEvents(user) {
 
   document.querySelectorAll("[data-toggle-template]").forEach((btn) => {
     btn.addEventListener("click", async () => {
+      if (!hasPermission(user.role, "action_template_manage")) return;
       const t = state.templates.find((x) => x.id === btn.dataset.toggleTemplate);
       if (!t) return;
       t.active = !t.active;
+      addAuditLog(user, "TOGGLE_TASK_ITEM_TYPE", "compliance_templates", t.id, { active: t.active });
       ensureRecurringTasks();
       await saveState();
       render();
     });
+  });
+
+  document.querySelectorAll("[data-edit-template]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const t = state.templates.find((x) => x.id === btn.dataset.editTemplate);
+      const form = document.getElementById("templateForm");
+      if (!t || !form) return;
+      form.elements.templateId.value = t.id;
+      form.elements.name.value = t.name || "";
+      form.elements.category.value = t.category || "other";
+      form.elements.subcategory.value = t.subcategory || "";
+      form.elements.team.value = t.team || "maintenance";
+      form.elements.frequencyType.value = t.frequencyType || "days";
+      form.elements.frequencyValue.value = t.frequencyValue || 0;
+      form.elements.evidenceType.value = t.evidenceType || "document";
+      form.elements.mandatory.value = String(Boolean(t.mandatory));
+      form.elements.scope.value = t.scope || "all";
+      form.elements.alerts.value = t.alerts || "";
+      const freqValue = document.getElementById("freqValue");
+      if (freqValue) freqValue.disabled = form.elements.frequencyType.value === "one_time";
+      form.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  });
+
+  document.getElementById("templateFormReset")?.addEventListener("click", () => {
+    const form = document.getElementById("templateForm");
+    if (!form) return;
+    form.reset();
+    form.elements.templateId.value = "";
+    const freqValue = document.getElementById("freqValue");
+    if (freqValue) freqValue.disabled = false;
+  });
+
+  document.querySelectorAll("[data-edit-doc-type]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const d = state.documentTypes.find((x) => x.id === btn.dataset.editDocType);
+      const form = document.getElementById("docTypeForm");
+      if (!d || !form) return;
+      form.elements.docTypeId.value = d.id;
+      form.elements.name.value = d.name || "";
+      form.elements.description.value = d.description || "";
+      form.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  });
+
+  document.querySelectorAll("[data-toggle-doc-type]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const d = state.documentTypes.find((x) => x.id === btn.dataset.toggleDocType);
+      if (!d) return;
+      d.active = !d.active;
+      addAuditLog(user, "TOGGLE_DOCUMENT_TYPE", "document_types", d.id, { active: d.active });
+      await saveState();
+      render();
+    });
+  });
+
+  document.getElementById("docTypeFormReset")?.addEventListener("click", () => {
+    const form = document.getElementById("docTypeForm");
+    if (!form) return;
+    form.reset();
+    form.elements.docTypeId.value = "";
+  });
+
+  document.querySelectorAll("[data-edit-asset-type]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const a = state.assetTypes.find((x) => x.id === btn.dataset.editAssetType);
+      const form = document.getElementById("assetTypeForm");
+      if (!a || !form) return;
+      form.elements.assetTypeId.value = a.id;
+      form.elements.name.value = a.name || "";
+      form.elements.description.value = a.description || "";
+      form.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  });
+
+  document.querySelectorAll("[data-toggle-asset-type]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const a = state.assetTypes.find((x) => x.id === btn.dataset.toggleAssetType);
+      if (!a) return;
+      a.active = !a.active;
+      addAuditLog(user, "TOGGLE_ASSET_TYPE", "asset_types", a.id, { active: a.active });
+      await saveState();
+      render();
+    });
+  });
+
+  document.getElementById("assetTypeFormReset")?.addEventListener("click", () => {
+    const form = document.getElementById("assetTypeForm");
+    if (!form) return;
+    form.reset();
+    form.elements.assetTypeId.value = "";
   });
 
   const templateForm = document.getElementById("templateForm");
@@ -1217,10 +1836,11 @@ function wireEvents(user) {
 
     templateForm.addEventListener("submit", async (e) => {
       e.preventDefault();
+      if (!hasPermission(user.role, "action_template_manage")) return;
       const fd = new FormData(templateForm);
       const frequencyType = String(fd.get("frequencyType") || "days");
-      state.templates.push({
-        id: uid("tpl"),
+      const templateId = String(fd.get("templateId") || "").trim();
+      const payload = {
         name: String(fd.get("name") || "").trim(),
         category: String(fd.get("category") || "other"),
         subcategory: String(fd.get("subcategory") || "General").trim() || "General",
@@ -1231,10 +1851,87 @@ function wireEvents(user) {
         mandatory: String(fd.get("mandatory") || "true") === "true",
         scope: String(fd.get("scope") || "all"),
         alerts: String(fd.get("alerts") || "").trim(),
-        active: true,
-      });
+      };
+      if (templateId) {
+        const existing = state.templates.find((x) => x.id === templateId);
+        if (existing) {
+          Object.assign(existing, payload);
+          addAuditLog(user, "UPDATE_TASK_ITEM_TYPE", "compliance_templates", existing.id, { name: existing.name });
+        }
+      } else {
+        state.templates.push({
+          id: uid("tpl"),
+          ...payload,
+          active: true,
+        });
+        addAuditLog(user, "CREATE_TASK_ITEM_TYPE", "compliance_templates", state.templates[state.templates.length - 1].id, {
+          name: state.templates[state.templates.length - 1].name,
+        });
+      }
       ensureRecurringTasks();
       await saveState();
+      templateForm.reset();
+      templateForm.elements.templateId.value = "";
+      render();
+    });
+  }
+
+  const docTypeForm = document.getElementById("docTypeForm");
+  if (docTypeForm) {
+    docTypeForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!hasPermission(user.role, "action_template_manage")) return;
+      const fd = new FormData(docTypeForm);
+      const id = String(fd.get("docTypeId") || "").trim();
+      const name = String(fd.get("name") || "").trim();
+      const description = String(fd.get("description") || "").trim();
+      if (!name) return alert("Document type name is required.");
+      const duplicate = state.documentTypes.find((x) => x.name.toLowerCase() === name.toLowerCase() && x.id !== id);
+      if (duplicate) return alert("Document type name already exists.");
+      if (id) {
+        const existing = state.documentTypes.find((x) => x.id === id);
+        if (existing) {
+          existing.name = name;
+          existing.description = description;
+          addAuditLog(user, "UPDATE_DOCUMENT_TYPE", "document_types", existing.id, { name });
+        }
+      } else {
+        state.documentTypes.push({ id: uid("dt"), name, description, active: true });
+        addAuditLog(user, "CREATE_DOCUMENT_TYPE", "document_types", state.documentTypes[state.documentTypes.length - 1].id, { name });
+      }
+      await saveState();
+      docTypeForm.reset();
+      docTypeForm.elements.docTypeId.value = "";
+      render();
+    });
+  }
+
+  const assetTypeForm = document.getElementById("assetTypeForm");
+  if (assetTypeForm) {
+    assetTypeForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!hasPermission(user.role, "action_template_manage")) return;
+      const fd = new FormData(assetTypeForm);
+      const id = String(fd.get("assetTypeId") || "").trim();
+      const name = String(fd.get("name") || "").trim();
+      const description = String(fd.get("description") || "").trim();
+      if (!name) return alert("Asset type name is required.");
+      const duplicate = state.assetTypes.find((x) => x.name.toLowerCase() === name.toLowerCase() && x.id !== id);
+      if (duplicate) return alert("Asset type name already exists.");
+      if (id) {
+        const existing = state.assetTypes.find((x) => x.id === id);
+        if (existing) {
+          existing.name = name;
+          existing.description = description;
+          addAuditLog(user, "UPDATE_ASSET_TYPE", "asset_types", existing.id, { name });
+        }
+      } else {
+        state.assetTypes.push({ id: uid("at"), name, description, active: true });
+        addAuditLog(user, "CREATE_ASSET_TYPE", "asset_types", state.assetTypes[state.assetTypes.length - 1].id, { name });
+      }
+      await saveState();
+      assetTypeForm.reset();
+      assetTypeForm.elements.assetTypeId.value = "";
       render();
     });
   }
